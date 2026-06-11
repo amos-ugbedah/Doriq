@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
-
-import API_BASE from "../config/api";
+import { getApiUrl } from '../config/api';
 
 export default function EmailVerificationModal({ email, userName, password, tempUserId, onVerified, onClose }) {
     const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -39,7 +38,6 @@ export default function EmailVerificationModal({ email, userName, password, temp
             document.getElementById(`code-input-${index + 1}`)?.focus();
         }
         
-        // Auto-submit when all 6 digits are entered
         if (index === 5 && value && newCode.every(digit => digit !== '')) {
             handleVerify(newCode.join(''));
         }
@@ -62,12 +60,11 @@ export default function EmailVerificationModal({ email, userName, password, temp
         setError('');
         
         try {
-            // IMPORTANT: Use EMAIL as the userId, not tempUserId
-            const verifyRes = await fetch(`${API_BASE}/auth/verify-email-code`, {
+            const verifyRes = await fetch(getApiUrl('/auth/verify-email-code'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    userId: email,  // FIXED: Use email instead of tempUserId
+                    userId: email,
                     code: finalCode,
                     email: email
                 })
@@ -83,13 +80,11 @@ export default function EmailVerificationModal({ email, userName, password, temp
                 return;
             }
             
-            // Code is verified, NOW create the Firebase user
             console.log('✅ Code verified! Creating Firebase user...');
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName: userName });
             
-            // Create user in backend with Firebase UID
-            await fetch(`${API_BASE}/user/create`, {
+            await fetch(getApiUrl('/user/create'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -99,8 +94,7 @@ export default function EmailVerificationModal({ email, userName, password, temp
                 })
             });
             
-            // Also ensure the user document exists with email as ID for future lookups
-            await fetch(`${API_BASE}/user/create`, {
+            await fetch(getApiUrl('/user/create'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -108,7 +102,7 @@ export default function EmailVerificationModal({ email, userName, password, temp
                     email: email,
                     fullName: userName
                 })
-            }).catch(() => {}); // Ignore if already exists
+            }).catch(() => {});
             
             console.log('✅ Account created successfully!');
             alert('✅ Account created successfully! You can now login.');
@@ -132,8 +126,7 @@ export default function EmailVerificationModal({ email, userName, password, temp
         setError('');
         
         try {
-            // Use email for resend
-            const res = await fetch(`${API_BASE}/auth/resend-verification`, {
+            const res = await fetch(getApiUrl('/auth/resend-verification-code'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
